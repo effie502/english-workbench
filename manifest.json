@@ -1,0 +1,24 @@
+{
+  "name": "宝宝英语启蒙工作台",
+  "short_name": "英语启蒙",
+  "description": "3岁宝宝英语启蒙每日打卡和小汽车奖励计划",
+  "start_url": "./english-workbench.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FFF8E7",
+  "theme_color": "#FF6B6B",
+  "icons": [
+    {
+      "src": "./icon-512.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
