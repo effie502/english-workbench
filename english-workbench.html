@@ -151,6 +151,25 @@
   .car-celebration .car-fly{position:absolute;width:50px;height:40px;animation:flyUp 1.5s ease-out forwards;}
   @keyframes flyUp{0%{bottom:-50px;opacity:1;}100%{bottom:110%;opacity:0;transform:rotate(360deg);}}
 
+  /* 磨耳朵音频按钮 */
+  .audio-play-btn{display:inline-block;width:100%;padding:12px;margin-bottom:14px;border:none;border-radius:14px;background:linear-gradient(135deg,#6C5CE7,#a29bfe);color:#fff;font-size:15px;font-weight:700;cursor:pointer;transition:transform .15s;}
+  .audio-play-btn:active{transform:scale(.97);}
+  .audio-play-btn.playing{background:linear-gradient(135deg,#FF6B6B,#FF8E53);animation:audioPulse 1.2s infinite;}
+  @keyframes audioPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,107,107,.6);}50%{box-shadow:0 0 0 12px rgba(255,107,107,0);}}
+
+  /* 周全勤小汽车动画 */
+  .week-celebration{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.65);z-index:9995;display:none;align-items:center;justify-content:center;pointer-events:none;}
+  .week-celebration.show{display:flex;}
+  .week-cel-content{text-align:center;color:#fff;width:100%;}
+  .week-cel-title{font-size:30px;font-weight:800;margin-bottom:18px;animation:popIn .6s ease;}
+  .week-cel-track{position:relative;width:100vw;height:90px;overflow:hidden;}
+  .week-cel-car{position:absolute;bottom:0;left:0;width:95px;height:72px;animation:driveAcross 2.6s linear forwards;}
+  .week-cel-car svg{width:100%;height:100%;}
+  .week-cel-sub{font-size:16px;font-weight:600;margin-top:18px;animation:fadeInUp .8s ease .3s backwards;}
+  @keyframes driveAcross{0%{transform:translateX(-130px);}25%{transform:translateX(25vw) translateY(-4px);}50%{transform:translateX(52vw);}75%{transform:translateX(78vw) translateY(-4px);}100%{transform:translateX(112vw);}}
+  @keyframes popIn{0%{transform:scale(.3);opacity:0;}70%{transform:scale(1.15);}100%{transform:scale(1);opacity:1;}}
+  @keyframes fadeInUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+
   /* Tabs */
   .tab-content{display:none;}.tab-content.active{display:block;animation:fadeIn .3s;}
   @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
@@ -210,6 +229,7 @@
 
 <div class="toast" id="toast"></div>
 <div class="car-celebration" id="celebration"></div>
+<div class="week-celebration" id="weekCelebration"></div>
 
 <div class="edit-modal" id="settingsModal">
   <div class="edit-modal-content" style="max-height:85vh;overflow-y:auto;">
@@ -430,8 +450,54 @@ function jdSearch(name){return "https://search.jd.com/Search?keyword="+encodeURI
 
 // ========== 图片生成 ==========
 function getVocabImageUrl(word){
-  const prompt=encodeURIComponent("Cute cartoon illustration of "+word+", simple flat design, colorful, childrens book style, white background, for toddler learning");
+  const prompt=encodeURIComponent("Simple colored line drawing of "+word+", crayon sketch style, black outline with bright colors, white background, educational flashcard for toddler");
   return "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt="+prompt+"&image_size=square";
+}
+
+// ========== 英文→中文词典（自动匹配） ==========
+const VOCAB_DICT={
+  // 动物
+  "cat":"猫","dog":"狗","bird":"鸟","fish":"鱼","duck":"鸭子","rabbit":"兔子","bear":"熊","pig":"猪","cow":"牛","horse":"马","sheep":"羊","lion":"狮子","tiger":"老虎","elephant":"大象","monkey":"猴子","chicken":"鸡","frog":"青蛙","mouse":"老鼠","turtle":"乌龟","panda":"熊猫",
+  // 食物
+  "apple":"苹果","banana":"香蕉","orange":"橙子/橙色","milk":"牛奶","egg":"鸡蛋","rice":"米饭","bread":"面包","cake":"蛋糕","cookie":"饼干","water":"水","candy":"糖果","ice cream":"冰淇淋","noodle":"面条","noodles":"面条","meat":"肉","vegetable":"蔬菜","fruit":"水果","juice":"果汁","honey":"蜂蜜","sandwich":"三明治",
+  // 颜色
+  "red":"红色","blue":"蓝色","yellow":"黄色","green":"绿色","pink":"粉色","purple":"紫色","black":"黑色","white":"白色","brown":"棕色",
+  // 数字
+  "one":"一","two":"二","three":"三","four":"四","five":"五","six":"六","seven":"七","eight":"八","nine":"九","ten":"十",
+  // 身体
+  "head":"头","nose":"鼻子","ear":"耳朵","eyes":"眼睛","eye":"眼睛","mouth":"嘴巴","hand":"手","hands":"手","foot":"脚","feet":"脚","arm":"手臂","leg":"腿","face":"脸","teeth":"牙齿","tooth":"牙齿","hair":"头发",
+  // 衣物
+  "shoes":"鞋","shoe":"鞋","socks":"袜子","sock":"袜子","hat":"帽子","coat":"外套","shirt":"衬衫","pants":"裤子","dress":"裙子","skirt":"裙子",
+  // 家庭
+  "mommy":"妈妈","mummy":"妈妈","mom":"妈妈","daddy":"爸爸","dad":"爸爸","baby":"宝宝","family":"家庭","brother":"哥哥/弟弟","sister":"姐姐/妹妹","grandma":"奶奶/外婆","grandpa":"爷爷/外公",
+  // 动作
+  "jump":"跳","run":"跑","walk":"走","sit":"坐","sit down":"坐下","stand":"站","stand up":"站起来","eat":"吃","drink":"喝","sleep":"睡觉","open":"打开","close":"关闭","wash":"洗","clap":"拍手","clap your hands":"拍拍手","stop":"停","go":"走/去","look":"看","listen":"听","come":"来","play":"玩","read":"读","sing":"唱歌","dance":"跳舞",
+  // 日常
+  "car":"汽车","bus":"公交车","ball":"球","book":"书","house":"房子","tree":"树","flower":"花","sun":"太阳","moon":"月亮","star":"星星","rain":"雨","snow":"雪","wind":"风","cloud":"云","happy":"开心","sad":"难过","angry":"生气","tired":"累","hello":"你好","hi":"嗨","goodbye":"再见","bye":"再见","yes":"是的","no":"不","please":"请","thank you":"谢谢","thanks":"谢谢","good":"好的","great":"太棒了","sorry":"对不起","my turn":"轮到我了","your turn":"轮到你了",
+  // 其他
+  "up":"上","down":"下","big":"大","small":"小","hot":"热","cold":"冷","in":"里","out":"外"
+};
+
+function autoTranslate(word){
+  let key=word.trim().toLowerCase().replace(/\s+/g," ");
+  if(!key)return "";
+  if(VOCAB_DICT[key])return VOCAB_DICT[key];
+  key=key.replace(/[.,!?;:]+$/,"");
+  if(VOCAB_DICT[key])return VOCAB_DICT[key];
+  let words=key.split(" ").filter(Boolean);
+  if(words.length>1){
+    let parts=words.map(w=>VOCAB_DICT[w]||"");
+    if(parts.every(p=>p))return parts.join("");
+    if(parts.some(p=>p))return words.map((w,i)=>parts[i]||w).join(" ");
+  }
+  return "";
+}
+
+// 从场景字符串中提取英文片段（供磨耳朵朗读）
+function extractEnglishParts(str){
+  let matches=str.match(/[A-Za-z][A-Za-z0-9',.!? ]{1,}/g);
+  if(matches)return matches.map(m=>m.trim()).filter(m=>m.length>1);
+  return [];
 }
 
 // ========== SVG小汽车 ==========
@@ -475,6 +541,7 @@ function migrateStore(s){
   if(!s.cars)s.cars=[];
   if(!s.redeemed)s.redeemed=[];
   if(!s.rewards)s.rewards=DEFAULT_REWARDS;
+  if(!s.weekCompleted)s.weekCompleted=[];
   return s;
 }
 function loadStore(){
@@ -532,6 +599,32 @@ function checkDayComplete(wid,day){
   renderCars();
   renderTopStats();
   renderWeekNav();
+  checkWeekComplete(wid);
+}
+
+function checkWeekComplete(wid){
+  if(isDayComplete(wid)){
+    let wk="w"+wid;
+    if(!store.weekCompleted.includes(wk)){
+      store.weekCompleted.push(wk);
+      saveStore();
+      celebrateWeek(wid);
+      showToast("🎉 本周全勤！小汽车动画来啦！");
+    }
+  }
+}
+
+function celebrateWeek(wid){
+  let el=document.getElementById("weekCelebration");
+  if(!el)return;
+  let color=CAR_COLORS[Math.floor(Math.random()*CAR_COLORS.length)];
+  el.innerHTML=`<div class="week-cel-content">`+
+    `<div class="week-cel-title">🎉 第${wid}周全勤！</div>`+
+    `<div class="week-cel-track"><div class="week-cel-car">${carSVG(color)}</div></div>`+
+    `<div class="week-cel-sub">🚗 小汽车开起来啦，继续加油！</div>`+
+    `</div>`;
+  el.classList.add("show");
+  setTimeout(()=>{el.classList.remove("show");el.innerHTML="";},3600);
 }
 
 // ========== 喜好 ==========
@@ -640,10 +733,63 @@ function renderTasks(wid){
   document.getElementById("tab-tasks").innerHTML=html;
 }
 
+// ========== 磨耳朵音频循环播放 ==========
+let audioState={playing:false,wid:null,items:[],index:0};
+
+function buildWeeklyAudioContent(wid){
+  let w=WEEKS.find(x=>x.id===wid);
+  let items=[];
+  if(w){
+    for(let s of w.scenarios){
+      extractEnglishParts(s).forEach(p=>items.push(p));
+    }
+  }
+  store.vocab.forEach(v=>items.push(v.word));
+  return items;
+}
+
+function speakWeeklyItem(){
+  if(!audioState.playing)return;
+  if(!('speechSynthesis' in window)){audioStopWeekly();showToast("当前浏览器不支持语音朗读");return;}
+  let items=audioState.items;
+  if(items.length===0){audioStopWeekly();return;}
+  let text=items[audioState.index % items.length];
+  let u=new SpeechSynthesisUtterance(text);
+  u.lang="en-US";
+  u.rate=0.8;
+  u.onend=()=>{audioState.index++;if(audioState.playing)speakWeeklyItem();};
+  u.onerror=()=>{if(audioState.playing){audioState.index++;setTimeout(speakWeeklyItem,300);}};
+  speechSynthesis.speak(u);
+}
+
+function toggleWeeklyAudio(wid){
+  if(audioState.playing && audioState.wid===wid){
+    audioStopWeekly();
+    renderMaterials(wid);
+    return;
+  }
+  audioStopWeekly();
+  audioState.playing=true;
+  audioState.wid=wid;
+  audioState.items=buildWeeklyAudioContent(wid);
+  audioState.index=0;
+  if(audioState.items.length===0){showToast("本周暂无可朗读的英文内容");audioState.playing=false;renderMaterials(wid);return;}
+  speakWeeklyItem();
+  showToast("🔊 开始磨耳朵，循环播放本周英文");
+  renderMaterials(wid);
+}
+
+function audioStopWeekly(){
+  if('speechSynthesis' in window)speechSynthesis.cancel();
+  audioState.playing=false;
+}
+
 function renderMaterials(wid){
   let w=WEEKS[wid-1];
+  let audioPlaying=audioState.playing && audioState.wid===wid;
   let html=`<div class="section"><div class="section-title"><span class="icon">📦</span> 第${wid}周准备材料</div>`;
   html+=`<div style="font-size:12px;color:var(--text-light);margin-bottom:12px;">点击 🔍 在B站搜索视频，点 📕 在京东搜索绘本。👍👎记录宝宝喜好。</div>`;
+  html+=`<button class="audio-play-btn ${audioPlaying?'playing':''}" onclick="toggleWeeklyAudio(${wid})">${audioPlaying?'⏹ 停止磨耳朵':'🔊 磨耳朵循环播放'}</button>`;
   html+=`<div class="materials-grid">`;
 
   // 儿歌
@@ -721,10 +867,10 @@ function renderVocab(){
 
   // 输入区
   html+=`<div class="vocab-input-box">`;
-  html+=`<div style="font-size:13px;margin-bottom:8px;">输入外教课教的单词/短语，系统自动生成配图：</div>`;
+  html+=`<div style="font-size:13px;margin-bottom:8px;">输入外教课教的英文单词/短语，自动配彩色简笔画 + 自动翻译中文：</div>`;
   html+=`<div class="vocab-input-row">`;
   html+=`<input type="text" id="vocabWord" placeholder="英文单词/短语 如 apple" onkeydown="if(event.key==='Enter')addVocab()">`;
-  html+=`<input type="text" id="vocabTrans" placeholder="中文翻译（可选）" style="max-width:120px;" onkeydown="if(event.key==='Enter')addVocab()">`;
+  html+=`<input type="text" id="vocabTrans" placeholder="中文（可留空自动翻译）" style="max-width:130px;" onkeydown="if(event.key==='Enter')addVocab()">`;
   html+=`<button class="vocab-add-btn" onclick="addVocab()">➕ 添加</button>`;
   html+=`</div></div>`;
 
@@ -758,6 +904,9 @@ function addVocab(){
   let word=document.getElementById("vocabWord").value.trim();
   let trans=document.getElementById("vocabTrans").value.trim();
   if(!word){showToast("请输入英文单词");return;}
+  if(!trans){
+    trans=autoTranslate(word);
+  }
   let id="v"+Date.now();
   let vocabItem={
     id:id,
@@ -774,7 +923,7 @@ function addVocab(){
   document.getElementById("vocabTrans").value="";
   renderVocab();
   renderTopStats();
-  showToast("✅ 已添加: "+word);
+  showToast(trans?("✅ 已添加："+word+" → "+trans):("✅ 已添加: "+word+"（未匹配中文，可删除后手动补充）"));
 }
 
 function delVocab(id){
