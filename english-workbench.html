@@ -838,18 +838,23 @@ function buildWeeklyAudioContent(wid){
   return items;
 }
 
+let weeklyAudio=null;
+function stopWeeklyAudio(){
+  if(weeklyAudio){try{weeklyAudio.pause();weeklyAudio.src="";}catch(e){}weeklyAudio=null;}
+}
 function speakWeeklyItem(){
   if(!audioState.playing)return;
-  if(!('speechSynthesis' in window)){audioStopWeekly();showToast("当前浏览器不支持语音朗读");return;}
   let items=audioState.items;
   if(items.length===0){audioStopWeekly();return;}
   let text=items[audioState.index % items.length];
-  let u=new SpeechSynthesisUtterance(text);
-  u.lang="en-US";
-  u.rate=0.8;
-  u.onend=()=>{audioState.index++;if(audioState.playing)speakWeeklyItem();};
-  u.onerror=()=>{if(audioState.playing){audioState.index++;setTimeout(speakWeeklyItem,300);}};
-  speechSynthesis.speak(u);
+  stopWeeklyAudio();
+  let audio=new Audio(youdaoAudioUrl(text));
+  weeklyAudio=audio;
+  audio.onended=()=>{weeklyAudio=null;audioState.index++;if(audioState.playing)speakWeeklyItem();};
+  audio.onerror=()=>{weeklyAudio=null;if(audioState.playing){audioState.index++;setTimeout(speakWeeklyItem,300);}};
+  let p;
+  try{p=audio.play();}catch(e){weeklyAudio=null;if(audioState.playing){audioState.index++;setTimeout(speakWeeklyItem,300);}return;}
+  if(p&&p.catch){p.catch(()=>{weeklyAudio=null;if(audioState.playing){audioState.index++;setTimeout(speakWeeklyItem,300);}});}
 }
 
 function toggleWeeklyAudio(wid){
@@ -870,6 +875,7 @@ function toggleWeeklyAudio(wid){
 }
 
 function audioStopWeekly(){
+  stopWeeklyAudio();
   if('speechSynthesis' in window)speechSynthesis.cancel();
   audioState.playing=false;
 }
