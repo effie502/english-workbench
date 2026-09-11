@@ -1,4 +1,4 @@
-const CACHE_NAME = 'english-workbench-v3';
+const CACHE_NAME = 'english-workbench-v4';
 const STATIC_FILES = [
   '/english-workbench.html',
   '/manifest.json',

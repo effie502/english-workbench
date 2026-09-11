@@ -144,6 +144,46 @@
   .fc-empty{text-align:center;padding:40px 20px;color:var(--text-light);}
   .vocab-review-btns{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
 
+  /* 发音按钮 */
+  .speak-btn{display:inline-flex;align-items:center;justify-content:center;gap:4px;margin-top:6px;padding:4px 12px;border:none;border-radius:14px;background:#E8F0FE;color:#1a73e8;font-size:12px;font-weight:600;cursor:pointer;}
+  .speak-btn:active{transform:scale(.95);}
+  .speak-btn.speaking{background:#1a73e8;color:#fff;animation:audioPulse 1s infinite;}
+
+  /* 图片上传 */
+  .img-upload-btn{display:inline-flex;align-items:center;gap:5px;padding:8px 14px;border:2px dashed #c9c9c9;border-radius:20px;background:#fff;color:var(--text-light);font-size:13px;font-weight:600;cursor:pointer;}
+  .img-upload-btn.has-img{border-style:solid;border-color:var(--primary);color:var(--primary);}
+  .vocab-img-preview{display:inline-block;width:40px;height:40px;border-radius:8px;object-fit:cover;border:1px solid var(--border);vertical-align:middle;margin-left:6px;}
+  .vocab-img-clear{margin-left:6px;padding:4px 10px;border:none;border-radius:12px;background:#f0f0f0;color:var(--text);font-size:12px;cursor:pointer;}
+
+  /* 趣味游戏 */
+  .game-zone{margin-top:16px;border-top:2px dashed var(--border);padding-top:14px;}
+  .game-zone-title{font-size:15px;font-weight:800;margin-bottom:12px;color:var(--text);}
+  .game-tabs{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+  .game-tab-btn{padding:8px 14px;border:2px solid var(--border);border-radius:20px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;color:var(--text-light);}
+  .game-tab-btn.active{background:var(--primary);border-color:var(--primary);color:#fff;}
+  .game-board{margin-top:10px;}
+  .match-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+  .match-card{aspect-ratio:3/4;border:2px solid var(--border);border-radius:10px;cursor:pointer;position:relative;transition:transform .3s;transform-style:preserve-3d;min-height:72px;}
+  .match-card .m-inner{width:100%;height:100%;position:absolute;transition:transform .4s;transform-style:preserve-3d;}
+  .match-card.flipped .m-inner{transform:rotateY(180deg);}
+  .match-card .m-face{position:absolute;width:100%;height:100%;backface-visibility:hidden;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700;padding:4px;box-sizing:border-box;}
+  .match-card .m-front{background:linear-gradient(135deg,#6C5CE7,#a29bfe);color:#fff;font-size:22px;}
+  .match-card .m-back{background:#fff;transform:rotateY(180deg);font-size:15px;color:var(--text);text-align:center;word-break:break-all;}
+  .match-card .m-back img{width:100%;height:100%;object-fit:cover;border-radius:8px;position:absolute;top:0;left:0;}
+  .match-card .m-back span{position:relative;z-index:1;background:rgba(255,255,255,.85);padding:2px 6px;border-radius:6px;}
+  .match-card.matched{opacity:0;pointer-events:none;transition:opacity .4s;}
+  .quiz-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+  .quiz-opt{border:2px solid var(--border);border-radius:12px;padding:8px;cursor:pointer;text-align:center;background:#fff;transition:all .15s;}
+  .quiz-opt img{width:100%;height:80px;object-fit:cover;border-radius:8px;}
+  .quiz-opt .q-word{font-size:13px;font-weight:700;margin-top:4px;}
+  .quiz-opt.correct{border-color:var(--success);background:#E8F8F0;animation:popIn .3s;}
+  .quiz-opt.wrong{border-color:#ff4444;background:#FFF0F0;animation:shake .3s;}
+  @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-6px);}75%{transform:translateX(6px);}}
+  .quiz-score{font-size:14px;font-weight:700;margin-bottom:10px;color:var(--text);}
+  .quiz-listen-btn{display:block;margin:0 auto 14px;padding:12px 26px;border:none;border-radius:22px;background:linear-gradient(135deg,#FF6B6B,#FF8E53);color:#fff;font-size:16px;font-weight:700;cursor:pointer;}
+  .quiz-listen-btn:active{transform:scale(.96);}
+  .game-win{text-align:center;padding:20px;font-size:16px;font-weight:700;}
+
   /* Toast & celebration */
   .toast{position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-100px);background:#333;color:#fff;padding:10px 20px;border-radius:30px;font-size:13px;z-index:9999;transition:transform .3s;display:flex;align-items:center;gap:8px;}
   .toast.show{transform:translateX(-50%) translateY(0);}
@@ -498,6 +538,32 @@ function extractEnglishParts(str){
   let matches=str.match(/[A-Za-z][A-Za-z0-9',.!? ]{1,}/g);
   if(matches)return matches.map(m=>m.trim()).filter(m=>m.length>1);
   return [];
+}
+
+// ========== 英音发音（外教课单词/测验，en-GB） ==========
+let britishVoice=null;
+function initBritishVoice(){
+  if(!('speechSynthesis' in window))return;
+  let voices=speechSynthesis.getVoices();
+  if(!voices||voices.length===0)return;
+  britishVoice=voices.find(v=>/en[-_]gb/i.test(v.lang))||
+    voices.find(v=>/en/i.test(v.lang)&&/GB|UK|British/i.test(v.name))||
+    null;
+}
+if('speechSynthesis' in window){
+  initBritishVoice();
+  speechSynthesis.onvoiceschanged=initBritishVoice;
+}
+function speakBritish(text,onEnd){
+  if(!text)return;
+  if(!('speechSynthesis' in window)){showToast("当前浏览器不支持语音朗读");return;}
+  speechSynthesis.cancel();
+  let u=new SpeechSynthesisUtterance(text);
+  u.lang="en-GB";
+  if(britishVoice)u.voice=britishVoice;
+  u.rate=0.75;
+  u.onend=onEnd||null;
+  speechSynthesis.speak(u);
 }
 
 // ========== SVG小汽车 ==========
@@ -857,43 +923,279 @@ function renderMaterials(wid){
     html+=`💡 喜欢的多重复，不太喜欢的换方式再试或降低难度。`;
     html+=`</div>`;
   }
+  html+=renderGameZone(wid);
   html+=`</div>`;
   document.getElementById("tab-materials").innerHTML=html;
+  renderCurrentGame(wid);
+}
+
+// ========== 每周趣味小游戏 ==========
+// 每周核心词（贴合主题、可配图、均在词典内）
+const THEME_WORDS={
+  1:["bear","duck","dog","cat","ball","baby"],
+  2:["head","nose","ear","eye","mouth","hand"],
+  3:["shoes","socks","hat","dress","wash","eat"],
+  4:["red","blue","yellow","green","one","two"],
+  5:["cat","dog","bird","fish","duck","pig"],
+  6:["apple","banana","milk","egg","rice","cake"],
+  7:["car","bus","ball","coat","shoes","stop"],
+  8:["one","two","three","four","five","six"],
+  9:["mommy","daddy","baby","family","sister","brother"],
+  10:["car","ball","book","bear","dog","cat"],
+  11:["sun","rain","cloud","flower","tree","wind"],
+  12:["apple","dog","cat","red","sun","ball"],
+  13:["cat","dog","apple","sun","car","red"]
+};
+
+let currentGame="match";
+let matchState={words:[],cards:[],flipped:[],lock:false,matched:0,wid:null};
+let quizState={words:[],index:0,score:0,total:0,answered:false,wid:null,currentWord:null,options:[],lastPicked:null,lastCorrect:false};
+
+function renderGameZone(wid){
+  let html=`<div class="game-zone">`;
+  html+=`<div class="game-zone-title">🎮 趣味小游戏（巩固第${wid}周知识）</div>`;
+  html+=`<div class="game-tabs">`;
+  html+=`<button class="game-tab-btn ${currentGame==='match'?'active':''}" data-game="match" onclick="switchGame(${wid},'match')">🃏 翻牌配对（英↔中）</button>`;
+  html+=`<button class="game-tab-btn ${currentGame==='quiz'?'active':''}" data-game="quiz" onclick="switchGame(${wid},'quiz')">👂 听音选图</button>`;
+  html+=`</div>`;
+  html+=`<div class="game-board" id="gameBoard"></div>`;
+  html+=`</div>`;
+  return html;
+}
+
+function switchGame(wid,game){
+  currentGame=game;
+  document.querySelectorAll(".game-tab-btn").forEach(b=>{
+    b.classList.toggle("active",b.dataset.game===game);
+  });
+  renderCurrentGame(wid);
+}
+
+function renderCurrentGame(wid){
+  if(currentGame==="quiz")renderQuizGame(wid);
+  else renderMatchGame(wid);
+}
+
+function updateGameBoard(html){
+  let b=document.getElementById("gameBoard");
+  if(b)b.innerHTML=html;
+}
+
+// 游戏1：翻牌配对（英文↔中文）
+function renderMatchGame(wid){
+  let words=(THEME_WORDS[wid]||THEME_WORDS[1]).slice(0,4);
+  let cards=[];
+  words.forEach(w=>{
+    cards.push({key:w,kind:"en",matched:false});
+    cards.push({key:w,kind:"cn",matched:false});
+  });
+  cards.sort(()=>Math.random()-0.5);
+  matchState={words,cards,flipped:[],lock:false,matched:0,wid};
+  updateGameBoard(matchGameHTML());
+}
+
+function matchGameHTML(){
+  let html=`<div style="font-size:12px;color:var(--text-light);margin-bottom:8px;">翻开两张，把英文和中文配成一对（已配 ${matchState.matched}/4 对，点卡片听英音）</div>`;
+  html+=`<div class="match-grid">`;
+  matchState.cards.forEach((c,i)=>{
+    let flipped=matchState.flipped.includes(i)||c.matched;
+    let cls="match-card"+(flipped?" flipped":"")+(c.matched?" matched":"");
+    let text=c.kind==="en"?c.key:(autoTranslate(c.key)||c.key);
+    html+=`<div class="${cls}" onclick="flipMatchCard(${i})"><div class="m-inner">`;
+    html+=`<div class="m-face m-front">❓</div>`;
+    html+=`<div class="m-face m-back"><span>${text}</span></div>`;
+    html+=`</div></div></div>`;
+  });
+  html+=`</div>`;
+  return html;
+}
+
+function flipMatchCard(i){
+  if(matchState.lock)return;
+  let c=matchState.cards[i];
+  if(c.matched||matchState.flipped.includes(i))return;
+  speakBritish(c.key);
+  matchState.flipped.push(i);
+  updateGameBoard(matchGameHTML());
+  if(matchState.flipped.length===2){
+    let a=matchState.flipped[0],b=matchState.flipped[1];
+    let ca=matchState.cards[a],cb=matchState.cards[b];
+    if(ca.key===cb.key&&ca.kind!==cb.kind){
+      ca.matched=true;cb.matched=true;matchState.matched++;
+      matchState.flipped=[];
+      updateGameBoard(matchGameHTML());
+      if(matchState.matched===4){
+        setTimeout(()=>{updateGameBoard(`<div class="game-win">🎉 全部配对成功！<br><span style="font-size:13px;color:var(--text-light);">宝宝真棒！</span><br><button class="fc-btn fc-btn-next" style="margin-top:12px;" onclick="renderMatchGame(${matchState.wid})">🔄 再玩一次</button></div>`);},350);
+      }
+    }else{
+      matchState.lock=true;
+      setTimeout(()=>{matchState.flipped=[];matchState.lock=false;updateGameBoard(matchGameHTML());},750);
+    }
+  }
+}
+
+// 游戏2：听音选图
+function renderQuizGame(wid){
+  let words=(THEME_WORDS[wid]||THEME_WORDS[1]).slice(0,6);
+  let cur=words[0];
+  quizState={words,index:0,score:0,total:words.length,answered:false,wid,currentWord:cur,options:buildQuizOptions(cur,words),lastPicked:null,lastCorrect:false};
+  updateGameBoard(quizHTML());
+  speakBritish(cur);
+}
+
+function buildQuizOptions(target,words){
+  let others=words.filter(w=>w!==target);
+  others.sort(()=>Math.random()-0.5);
+  let opts=[target].concat(others.slice(0,3));
+  opts.sort(()=>Math.random()-0.5);
+  return opts;
+}
+
+function quizHTML(){
+  let q=quizState;
+  let html=`<div class="quiz-score">⭐ ${q.score} 分 · 第 ${q.index+1}/${q.total} 题</div>`;
+  html+=`<button class="quiz-listen-btn" onclick="speakBritish('${q.currentWord}')">🔊 听这个单词（英音）</button>`;
+  html+=`<div class="quiz-grid">`;
+  q.options.forEach(opt=>{
+    let cls="quiz-opt";
+    if(q.answered){
+      if(opt===q.currentWord)cls+=" correct";
+      else if(opt===q.lastPicked)cls+=" wrong";
+    }
+    html+=`<div class="${cls}" onclick="answerQuiz('${opt}')"><img src="${getVocabImageUrl(opt)}" onerror="this.style.display='none';this.parentElement.innerHTML+='<div style=font-size:40px>📖</div>'"></div>`;
+  });
+  html+=`</div>`;
+  if(q.answered){
+    if(q.lastCorrect){
+      html+=`<div style="text-align:center;color:var(--success);font-weight:700;margin-top:8px;">✅ 答对啦！</div>`;
+    }else{
+      html+=`<div style="text-align:center;color:#ff4444;font-weight:700;margin-top:8px;">❌ 是「${q.currentWord}」${autoTranslate(q.currentWord)?'（'+autoTranslate(q.currentWord)+'）':''}</div>`;
+    }
+  }
+  return html;
+}
+
+function answerQuiz(opt){
+  let q=quizState;
+  if(q.answered)return;
+  q.answered=true;
+  q.lastPicked=opt;
+  q.lastCorrect=(opt===q.currentWord);
+  if(q.lastCorrect)q.score++;
+  updateGameBoard(quizHTML());
+  setTimeout(()=>{
+    if(q.index+1>=q.total){
+      updateGameBoard(`<div class="game-win">🎉 完成！得分 ${q.score}/${q.total}<br><span style="font-size:13px;color:var(--text-light);">宝宝听得很棒！</span><br><button class="fc-btn fc-btn-next" style="margin-top:12px;" onclick="renderQuizGame(${q.wid})">🔄 再玩一次</button></div>`);
+    }else{
+      q.index++;q.currentWord=q.words[q.index];q.answered=false;
+      q.options=buildQuizOptions(q.currentWord,q.words);
+      q.lastPicked=null;q.lastCorrect=false;
+      updateGameBoard(quizHTML());
+      speakBritish(q.currentWord);
+    }
+  },900);
 }
 
 // ========== 外教课词汇 ==========
+// 待用图片（输入区导入）与目标卡片ID（点击卡片图片导入）
+let pendingVocabImage=null;
+let pendingCardImageId=null;
+
+function chooseVocabImage(){
+  pendingCardImageId=null;
+  let f=document.getElementById("vocabImgFile");if(f)f.click();
+}
+function importCardImage(id){
+  pendingCardImageId=id;
+  let f=document.getElementById("vocabImgFile");if(f)f.click();
+}
+function clearVocabImage(){
+  pendingVocabImage=null;renderVocab();
+}
+function resizeImage(dataUrl,maxSize,cb){
+  let img=new Image();
+  img.onload=function(){
+    let scale=Math.min(1,maxSize/Math.max(img.width,img.height));
+    let w=Math.max(1,Math.round(img.width*scale)),h=Math.max(1,Math.round(img.height*scale));
+    let canvas=document.createElement("canvas");
+    canvas.width=w;canvas.height=h;
+    canvas.getContext("2d").drawImage(img,0,0,w,h);
+    try{cb(canvas.toDataURL("image/jpeg",0.72));}catch(e){cb(dataUrl);}
+  };
+  img.onerror=function(){cb(dataUrl);};
+  img.src=dataUrl;
+}
+function onVocabImageFile(input){
+  let file=input.files[0];
+  if(!file)return;
+  if(!file.type.startsWith("image/")){showToast("请选择图片文件");input.value="";return;}
+  let reader=new FileReader();
+  reader.onload=function(e){
+    resizeImage(e.target.result,320,function(dataUrl){
+      if(pendingCardImageId){
+        let v=store.vocab.find(x=>x.id===pendingCardImageId);
+        if(v){v.image=dataUrl;saveStore();renderVocab();renderTopStats();showToast("✅ 图片已更新");}
+        pendingCardImageId=null;
+      }else{
+        pendingVocabImage=dataUrl;
+        renderVocab();
+        showToast("✅ 图片已导入，点击「添加」保存");
+      }
+    });
+  };
+  reader.readAsDataURL(file);
+  input.value="";
+}
+function speakVocabById(id){
+  let v=store.vocab.find(x=>x.id===id);
+  if(v)speakBritish(v.word);
+}
+
 function renderVocab(){
   let html=`<div class="section"><div class="section-title"><span class="icon">👨‍🏫</span> 外教课词汇管理</div>`;
 
   // 输入区
   html+=`<div class="vocab-input-box">`;
-  html+=`<div style="font-size:13px;margin-bottom:8px;">输入外教课教的英文单词/短语，自动配彩色简笔画 + 自动翻译中文：</div>`;
+  html+=`<div style="font-size:13px;margin-bottom:8px;">输入外教课教的英文单词/短语，自动翻译中文；可导入图片，不导入则自动配彩色简笔画：</div>`;
   html+=`<div class="vocab-input-row">`;
   html+=`<input type="text" id="vocabWord" placeholder="英文单词/短语 如 apple" onkeydown="if(event.key==='Enter')addVocab()">`;
   html+=`<input type="text" id="vocabTrans" placeholder="中文（可留空自动翻译）" style="max-width:130px;" onkeydown="if(event.key==='Enter')addVocab()">`;
   html+=`<button class="vocab-add-btn" onclick="addVocab()">➕ 添加</button>`;
+  html+=`</div>`;
+  html+=`<div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;">`;
+  html+=`<button type="button" class="img-upload-btn ${pendingVocabImage?'has-img':''}" onclick="chooseVocabImage()">🖼️ 导入图片（可选）</button>`;
+  if(pendingVocabImage){
+    html+=`<img class="vocab-img-preview" src="${pendingVocabImage}">`;
+    html+=`<button class="vocab-img-clear" onclick="clearVocabImage()">移除</button>`;
+  }else{
+    html+=`<span style="font-size:11px;color:var(--text-light);">不导入则自动配彩色简笔画</span>`;
+  }
   html+=`</div></div>`;
 
   // 词汇列表
   if(store.vocab.length===0){
-    html+=`<div class="fc-empty">还没有外教课词汇，添加后这里会显示带配图的单词卡 📖</div>`;
+    html+=`<div class="fc-empty">还没有外教课词汇，添加后这里会显示带图、中文和发音按钮的单词卡 📖</div>`;
   }else{
     html+=`<div class="vocab-review-btns">`;
     html+=`<button class="fc-btn fc-btn-next" onclick="startFlashcard()">🎴 开始随机复习</button>`;
-    html+=`<span style="font-size:12px;color:var(--text-light);align-self:center;">共 ${store.vocab.length} 个词汇</span>`;
+    html+=`<span style="font-size:12px;color:var(--text-light);align-self:center;">共 ${store.vocab.length} 个词汇，点 🔊 可听英音</span>`;
     html+=`</div>`;
     html+=`<div class="vocab-grid">`;
     for(let v of store.vocab){
       html+=`<div class="vocab-card">`;
       html+=`<button class="vocab-del" onclick="delVocab('${v.id}')">✕</button>`;
-      html+=`<div class="img-box"><img src="${v.image}" onerror="this.parentElement.innerHTML='<div style=font-size:32px>📖</div>'" onload="this.parentElement.querySelector('.img-loading')?this.parentElement.querySelector('.img-loading').style.display='none':null"></div>`;
+      html+=`<div class="img-box" onclick="importCardImage('${v.id}')" title="点击更换图片"><img src="${v.image}" onerror="this.parentElement.innerHTML='<div style=font-size:32px>📖</div>'" onload="this.parentElement.querySelector('.img-loading')?this.parentElement.querySelector('.img-loading').style.display='none':null"></div>`;
       html+=`<div class="vocab-word">${v.word}</div>`;
       if(v.translation)html+=`<div class="vocab-translation">${v.translation}</div>`;
+      html+=`<button class="speak-btn" onclick="event.stopPropagation();speakVocabById('${v.id}')">🔊 读</button>`;
       html+=`</div>`;
     }
     html+=`</div>`;
   }
   html+=`</div>`;
+
+  // 隐藏的图片选择 input
+  html+=`<input type="file" id="vocabImgFile" accept="image/*" style="display:none;" onchange="onVocabImageFile(this)">`;
 
   // 闪卡复习区
   html+=`<div id="flashcardArea"></div>`;
@@ -912,13 +1214,14 @@ function addVocab(){
     id:id,
     word:word,
     translation:trans,
-    image:getVocabImageUrl(word),
+    image:pendingVocabImage||getVocabImageUrl(word),
     date:new Date().toISOString(),
     known:false,
     reviewCount:0
   };
   store.vocab.push(vocabItem);
   saveStore();
+  pendingVocabImage=null;
   document.getElementById("vocabWord").value="";
   document.getElementById("vocabTrans").value="";
   renderVocab();
@@ -974,11 +1277,13 @@ function renderFlashcard(){
       <div class="flashcard-inner">
         <div class="flashcard-front">
           <img src="${v.image}" onerror="this.style.display='none';this.parentElement.innerHTML+='<div style=font-size:48px>📖</div>'">
-          <div class="fc-hint">这是什么？点击翻面</div>
+          <button class="speak-btn" style="margin-top:6px;background:#fff;color:#FF6B6B;" onclick="event.stopPropagation();speakVocabById('${v.id}')">🔊 听发音</button>
+          <div class="fc-hint">点喇叭听英音，点卡片翻面</div>
         </div>
         <div class="flashcard-back">
           <div class="fc-word">${v.word}</div>
           ${v.translation?`<div class="fc-trans">${v.translation}</div>`:""}
+          <button class="speak-btn" style="margin-top:6px;background:rgba(255,255,255,.9);color:#44A3A0;" onclick="event.stopPropagation();speakVocabById('${v.id}')">🔊 读</button>
         </div>
       </div>
     </div>
