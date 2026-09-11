@@ -555,16 +555,39 @@ if('speechSynthesis' in window){
   initBritishVoice();
   speechSynthesis.onvoiceschanged=initBritishVoice;
 }
+// 有道TTS音频URL：type=1英音，type=2美音（国内可访问，不依赖浏览器语音引擎）
+function youdaoAudioUrl(text){
+  return "https://dict.youdao.com/dictvoice?audio="+encodeURIComponent(text)+"&type=1";
+}
+let speakAudio=null;
+function stopSpeakAudio(){
+  if(speakAudio){try{speakAudio.pause();speakAudio.src="";}catch(e){}speakAudio=null;}
+}
 function speakBritish(text,onEnd){
   if(!text)return;
-  if(!('speechSynthesis' in window)){showToast("当前浏览器不支持语音朗读");return;}
-  speechSynthesis.cancel();
-  let u=new SpeechSynthesisUtterance(text);
-  u.lang="en-GB";
-  if(britishVoice)u.voice=britishVoice;
-  u.rate=0.75;
-  u.onend=onEnd||null;
-  speechSynthesis.speak(u);
+  stopSpeakAudio();
+  let audio=new Audio(youdaoAudioUrl(text));
+  speakAudio=audio;
+  audio.onended=function(){speakAudio=null;if(onEnd)onEnd();};
+  audio.onerror=function(){speakAudio=null;speakBritishFallback(text,onEnd);};
+  let p;
+  try{p=audio.play();}catch(e){speakAudio=null;speakBritishFallback(text,onEnd);return;}
+  if(p&&p.catch){p.catch(function(){speakAudio=null;speakBritishFallback(text,onEnd);});}
+}
+function speakBritishFallback(text,onEnd){
+  if('speechSynthesis' in window){
+    try{
+      speechSynthesis.cancel();
+      let u=new SpeechSynthesisUtterance(text);
+      u.lang="en-GB";
+      if(britishVoice)u.voice=britishVoice;
+      u.rate=0.75;
+      if(onEnd)u.onend=onEnd;
+      speechSynthesis.speak(u);
+      return;
+    }catch(e){}
+  }
+  if(!onEnd)showToast("发音播放失败，请检查网络后重试");
 }
 
 // ========== SVG小汽车 ==========
