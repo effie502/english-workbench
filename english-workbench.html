@@ -244,9 +244,10 @@
     <div class="stat-chip" id="syncStatus" onclick="openSettings()" style="cursor:pointer;">⚙️ 未设置</div>
   </div>
 </div>
-<div id="installBar" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#333;color:#fff;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;z-index:9997;">
-  <span style="font-size:13px;">📱 安装到手机桌面，随时打开</span>
-  <button onclick="installApp()" style="padding:6px 18px;border:none;border-radius:20px;background:var(--primary);color:#fff;font-size:13px;font-weight:600;cursor:pointer;">安装</button>
+<div id="installBar" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#333;color:#fff;padding:10px 16px;align-items:center;justify-content:space-between;z-index:9997;gap:10px;">
+  <span style="font-size:13px;flex:1;">📱 安装到手机桌面，随时打开</span>
+  <button onclick="installApp()" style="padding:6px 18px;border:none;border-radius:20px;background:var(--primary);color:#fff;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">安装</button>
+  <button onclick="dismissInstall()" style="background:none;border:none;color:#ccc;font-size:20px;cursor:pointer;line-height:1;padding:0 4px;">×</button>
 </div>
 
 <div class="container">
@@ -1768,15 +1769,33 @@ function saveSettings(){
 }
 
 // PWA安装
+function isAppInstalled(){
+  if(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)return true;
+  if(window.navigator&&window.navigator.standalone===true)return true;
+  try{return localStorage.getItem('installDismissed')==='1';}catch(e){return false;}
+}
 window.addEventListener('beforeinstallprompt',e=>{
   e.preventDefault();deferredInstallPrompt=e;
-  document.getElementById('installBar').style.display='flex';
+  if(!isAppInstalled())document.getElementById('installBar').style.display='flex';
+});
+window.addEventListener('appinstalled',()=>{
+  try{localStorage.setItem('installDismissed','1');}catch(e){}
+  deferredInstallPrompt=null;
+  document.getElementById('installBar').style.display='none';
 });
 function installApp(){
   if(deferredInstallPrompt){
     deferredInstallPrompt.prompt();
-    deferredInstallPrompt.userChoice.then(()=>{deferredInstallPrompt=null;document.getElementById('installBar').style.display='none';});
+    deferredInstallPrompt.userChoice.then(()=>{
+      deferredInstallPrompt=null;
+      document.getElementById('installBar').style.display='none';
+      try{localStorage.setItem('installDismissed','1');}catch(e){}
+    });
   }else{showToast('📱 请用浏览器菜单"添加到主屏幕"');}
+}
+function dismissInstall(){
+  try{localStorage.setItem('installDismissed','1');}catch(e){}
+  document.getElementById('installBar').style.display='none';
 }
 
 // Service Worker注册（仅HTTPS或localhost下生效）
