@@ -908,12 +908,11 @@ function buildWeeklyAudioContent(wid){
   let w=WEEKS.find(x=>x.id===wid);
   let items=[];
   if(w){
-    for(let s of w.scenarios){
-      extractEnglishParts(s).forEach(p=>items.push(p));
-    }
+    (w.songs||[]).forEach(s=>extractEnglishParts(s).forEach(p=>items.push(p)));
+    (w.animation||[]).forEach(a=>extractEnglishParts(a).forEach(p=>items.push(p)));
   }
-  store.vocab.forEach(v=>items.push(v.word));
-  return items;
+  // 去重并保持顺序
+  return items.filter((x,i)=>items.indexOf(x)===i);
 }
 
 let weeklyAudio=null;
@@ -964,9 +963,9 @@ function toggleWeeklyAudio(wid){
   audioState.wid=wid;
   audioState.items=buildWeeklyAudioContent(wid);
   audioState.index=0;
-  if(audioState.items.length===0){showToast("本周暂无可朗读的英文内容");audioState.playing=false;renderMaterials(wid);return;}
+  if(audioState.items.length===0){showToast("本周暂无可朗读的儿歌/动画");audioState.playing=false;renderMaterials(wid);return;}
   speakWeeklyItem();
-  showToast("🔊 开始磨耳朵，循环播放本周英文");
+  showToast("🔊 开始磨耳朵，循环播放本周儿歌和动画");
   renderMaterials(wid);
 }
 
