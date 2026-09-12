@@ -489,10 +489,44 @@ function biliSong(name){return biliSearch("Super Simple Songs "+name);}
 function biliAni(name){return biliSearch(name+" 英文启蒙动画");}
 function jdSearch(name){return "https://search.jd.com/Search?keyword="+encodeURIComponent(name+" 英文绘本");}
 
-// ========== 图片生成 ==========
+// ========== 单词配图（本地矢量卡片，无需网络、稳定可靠） ==========
+const PASTEL=["#FFD9D9","#D9EDFF","#FFF3C4","#D6F5D6","#EBD9FF","#FFE0F0","#D6F5F0","#FFEBD6"];
+const EMOJI_MAP={
+  // 动物
+  "cat":"🐱","dog":"🐶","bird":"🐦","fish":"🐟","duck":"🦆","rabbit":"🐰","bear":"🐻","pig":"🐷","cow":"🐮","horse":"🐴","sheep":"🐑","lion":"🦁","tiger":"🐯","elephant":"🐘","monkey":"🐵","chicken":"🐔","frog":"🐸","mouse":"🐭","turtle":"🐢","panda":"🐼","bee":"🐝","butterfly":"🦋","snake":"🐍","ant":"🐜","dolphin":"🐬","owl":"🦉",
+  // 食物
+  "apple":"🍎","banana":"🍌","orange":"🍊","milk":"🥛","egg":"🥚","rice":"🍚","bread":"🍞","cake":"🎂","cookie":"🍪","water":"💧","candy":"🍬","ice cream":"🍦","noodle":"🍜","noodles":"🍜","meat":"🍖","vegetable":"🥦","fruit":"🍇","juice":"🧃","honey":"🍯","sandwich":"🥪","pizza":"🍕","hamburger":"🍔","soup":"🍲","tea":"🍵","coffee":"☕","corn":"🌽","carrot":"🥕","potato":"🥔","tomato":"🍅","strawberry":"🍓","grape":"🍇","watermelon":"🍉","peach":"🍑","pear":"🍐","lemon":"🍋",
+  // 颜色
+  "red":"🔴","blue":"🔵","yellow":"🟡","green":"🟢","pink":"🌸","purple":"🟣","black":"⚫","white":"⚪","brown":"🟤","gray":"⬜","grey":"⬜",
+  // 数字
+  "one":"1️⃣","two":"2️⃣","three":"3️⃣","four":"4️⃣","five":"5️⃣","six":"6️⃣","seven":"7️⃣","eight":"8️⃣","nine":"9️⃣","ten":"🔟",
+  // 身体
+  "head":"🙂","nose":"👃","ear":"👂","eyes":"👀","eye":"👀","mouth":"👄","hand":"✋","hands":"✋","foot":"🦶","feet":"🦶","arm":"💪","leg":"🦵","face":"🙂","teeth":"🦷","tooth":"🦷","hair":"💇","finger":"☝️",
+  // 衣物
+  "shoes":"👟","shoe":"👟","socks":"🧦","sock":"🧦","hat":"🧢","coat":"🧥","shirt":"👕","pants":"👖","dress":"👗","skirt":"👗","glasses":"👓",
+  // 家庭
+  "mommy":"👩","mummy":"👩","mom":"👩","daddy":"👨","dad":"👨","baby":"👶","family":"👨‍👩‍👧","brother":"👦","sister":"👧","grandma":"👵","grandpa":"👴",
+  // 动作
+  "jump":"🤸","run":"🏃","walk":"🚶","sit":"🪑","sit down":"🪑","stand":"🧍","stand up":"🧍","eat":"🍽️","drink":"🥤","sleep":"😴","open":"📂","close":"📂","wash":"🧼","clap":"👏","clap your hands":"👏","stop":"✋","go":"🚶","look":"👀","listen":"👂","come":"➡️","play":"🧸","read":"📖","sing":"🎤","dance":"💃","swim":"🏊","fly":"✈️","ride":"🚲","kick":"⚽","throw":"🎾","catch":"🧤","draw":"🖍️","write":"✏️","cook":"🍳","help":"🤝","smile":"😊","cry":"😢","laugh":"😄",
+  // 日常
+  "car":"🚗","bus":"🚌","ball":"⚽","book":"📖","house":"🏠","tree":"🌳","flower":"🌸","sun":"☀️","moon":"🌙","star":"⭐","rain":"🌧️","snow":"❄️","wind":"💨","cloud":"☁️","happy":"😊","sad":"😢","angry":"😠","tired":"😪","hello":"👋","hi":"👋","goodbye":"👋","bye":"👋","yes":"✅","no":"❌","please":"🙏","thank you":"🙏","thanks":"🙏","good":"👍","great":"🌟","sorry":"😔","my turn":"🙋","your turn":"👉","school":"🏫","teacher":"🧑‍🏫","friend":"🧑‍🤝‍🧑","toy":"🧸","bed":"🛏️","chair":"🪑","table":"🪵","door":"🚪","window":"🪟","phone":"📱","computer":"💻","bike":"🚲","train":"🚆","plane":"✈️","boat":"⛵",
+  // 其他
+  "up":"⬆️","down":"⬇️","big":"🐘","small":"🐜","hot":"🔥","cold":"❄️","in":"📥","out":"📤","fast":"⚡","slow":"🐢","new":"✨","old":"📜","many":"✨","little":"🐣"
+};
+function escapeXml(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&apos;");}
 function getVocabImageUrl(word){
-  const prompt=encodeURIComponent("Simple colored line drawing of "+word+", crayon sketch style, black outline with bright colors, white background, educational flashcard for toddler");
-  return "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt="+prompt+"&image_size=square";
+  const w=(word||"").trim();
+  const key=w.toLowerCase().replace(/[.,!?;:]+$/,"");
+  const emoji=EMOJI_MAP[key]||"🔤";
+  const bg=PASTEL[(key.length||0)%PASTEL.length];
+  const label=escapeXml(w.length>14?w.slice(0,13)+"…":w);
+  const svg='<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240">'
+    +'<rect width="240" height="240" rx="28" fill="'+bg+'"/>'
+    +'<circle cx="120" cy="112" r="72" fill="#ffffff" opacity="0.9"/>'
+    +'<text x="120" y="142" font-size="90" text-anchor="middle">'+emoji+'</text>'
+    +'<text x="120" y="226" font-size="24" font-family="Arial,Helvetica,sans-serif" font-weight="bold" text-anchor="middle" fill="#444444">'+label+'</text>'
+    +'</svg>';
+  return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);
 }
 
 // ========== 英文→中文词典（自动匹配） ==========
@@ -532,6 +566,39 @@ function autoTranslate(word){
     if(parts.some(p=>p))return words.map((w,i)=>parts[i]||w).join(" ");
   }
   return "";
+}
+
+// 异步联网翻译（有道词典建议接口，JSONP，无需密钥；失败时回调空串）
+let __trSeq=0;
+function translateWordAsync(word,cb){
+  const q=(word||"").trim();
+  if(!q){cb("");return;}
+  const cbName="__ydic"+Date.now()+"_"+(++__trSeq);
+  const sc=document.createElement("script");
+  let done=false;
+  const finish=function(ch){
+    if(done)return;done=true;
+    try{delete window[cbName];}catch(e){window[cbName]=undefined;}
+    try{sc.remove();}catch(e){}
+    cb(ch||"");
+  };
+  window[cbName]=function(res){
+    let ch="";
+    try{
+      const entries=(res&&res.data&&res.data.entries)||[];
+      let e=entries.find(x=>x.entry&&String(x.entry).toLowerCase()===q.toLowerCase());
+      if(!e&&entries.length)e=entries[0];
+      if(e&&e.explain){
+        const m=String(e.explain).match(/[\u4e00-\u9fff]+/);
+        if(m)ch=m[0];
+      }
+    }catch(err){}
+    finish(ch);
+  };
+  sc.onerror=function(){finish("");};
+  sc.src="https://dict.youdao.com/suggest?q="+encodeURIComponent(q)+"&num=5&doctype=json&le=en&ver=2.0&callback="+cbName;
+  document.head.appendChild(sc);
+  setTimeout(finish,5000);
 }
 
 // 从场景字符串中提取英文片段（供磨耳朵朗读）
@@ -651,6 +718,17 @@ function loadStore(){
   return migrateStore({});
 }
 let store=loadStore();
+// 修复旧版本曾使用的失效在线生图链接，替换为本地矢量卡片
+(function(){
+  let changed=false;
+  (store.vocab||[]).forEach(function(v){
+    if(!v.image || String(v.image).indexOf("trae-api-cn")>=0){
+      v.image=getVocabImageUrl(v.word);
+      changed=true;
+    }
+  });
+  if(changed){try{localStorage.setItem(STORE_KEY,JSON.stringify(store));}catch(e){}}
+})();
 function saveStore(){localStorage.setItem(STORE_KEY,JSON.stringify(store));}
 
 // ========== 任务操作 ==========
@@ -839,22 +917,40 @@ function buildWeeklyAudioContent(wid){
 }
 
 let weeklyAudio=null;
+let weeklyLoopTimer=null;
+let weeklyLoopToken=0;
+
 function stopWeeklyAudio(){
-  if(weeklyAudio){try{weeklyAudio.pause();weeklyAudio.src="";}catch(e){}weeklyAudio=null;}
+  weeklyLoopToken++;                                  // 让所有未完成的回调失效
+  if(weeklyLoopTimer){clearTimeout(weeklyLoopTimer);weeklyLoopTimer=null;}
+  if(weeklyAudio){
+    try{weeklyAudio.onended=null;weeklyAudio.onerror=null;weeklyAudio.pause();}catch(e){}
+    try{weeklyAudio.src="";}catch(e){}
+    weeklyAudio=null;
+  }
 }
+
 function speakWeeklyItem(){
   if(!audioState.playing)return;
-  let items=audioState.items;
-  if(items.length===0){audioStopWeekly();return;}
-  let text=items[audioState.index % items.length];
-  stopWeeklyAudio();
-  let audio=new Audio(youdaoAudioUrl(text));
+  const items=audioState.items;
+  if(!items.length){audioStopWeekly();return;}
+  const text=items[audioState.index % items.length];
+  audioState.index++;
+  const token=weeklyLoopToken;                        // 记录当前轮次令牌
+  const audio=new Audio(youdaoAudioUrl(text));
   weeklyAudio=audio;
-  audio.onended=()=>{weeklyAudio=null;audioState.index++;if(audioState.playing)speakWeeklyItem();};
-  audio.onerror=()=>{weeklyAudio=null;if(audioState.playing){audioState.index++;setTimeout(speakWeeklyItem,300);}};
+  let settled=false;
+  const next=function(){
+    if(settled)return;settled=true;
+    if(token!==weeklyLoopToken)return;                // 已被停止/新循环取代
+    weeklyAudio=null;
+    weeklyLoopTimer=setTimeout(speakWeeklyItem,450);  // 每条之间留 450ms 停顿
+  };
+  audio.onended=()=>{ if(weeklyAudio===audio) next(); };
+  audio.onerror=()=>{ if(weeklyAudio===audio) next(); };
   let p;
-  try{p=audio.play();}catch(e){weeklyAudio=null;if(audioState.playing){audioState.index++;setTimeout(speakWeeklyItem,300);}return;}
-  if(p&&p.catch){p.catch(()=>{weeklyAudio=null;if(audioState.playing){audioState.index++;setTimeout(speakWeeklyItem,300);}});}
+  try{p=audio.play();}catch(e){ if(weeklyAudio===audio) next(); return; }
+  if(p&&p.then){p.then(()=>{}).catch(()=>{ if(weeklyAudio===audio) next(); });}
 }
 
 function toggleWeeklyAudio(wid){
@@ -1216,7 +1312,7 @@ function renderVocab(){
       html+=`<button class="vocab-del" onclick="delVocab('${v.id}')">✕</button>`;
       html+=`<div class="img-box" onclick="importCardImage('${v.id}')" title="点击更换图片"><img src="${v.image}" onerror="this.parentElement.innerHTML='<div style=font-size:32px>📖</div>'" onload="this.parentElement.querySelector('.img-loading')?this.parentElement.querySelector('.img-loading').style.display='none':null"></div>`;
       html+=`<div class="vocab-word">${v.word}</div>`;
-      if(v.translation)html+=`<div class="vocab-translation">${v.translation}</div>`;
+      html+=`<div class="vocab-translation" id="vocab-tr-${v.id}">${v.translation||''}</div>`;
       html+=`<button class="speak-btn" onclick="event.stopPropagation();speakVocabById('${v.id}')">🔊 读</button>`;
       html+=`</div>`;
     }
@@ -1256,7 +1352,26 @@ function addVocab(){
   document.getElementById("vocabTrans").value="";
   renderVocab();
   renderTopStats();
-  showToast(trans?("✅ 已添加："+word+" → "+trans):("✅ 已添加: "+word+"（未匹配中文，可删除后手动补充）"));
+  if(trans){
+    showToast("✅ 已添加："+word+" → "+trans);
+  }else{
+    showToast("✅ 已添加："+word+"，正在联网查中文…");
+    translateWordAsync(word,function(ch){
+      const v=store.vocab.find(x=>x.id===id);
+      if(!v)return;
+      if(ch){
+        v.translation=ch;
+        saveStore();
+        const el=document.getElementById("vocab-tr-"+id);
+        if(el)el.textContent=ch;
+        showToast("🔎 已翻译："+word+" → "+ch);
+      }else{
+        const el=document.getElementById("vocab-tr-"+id);
+        if(el)el.textContent="未匹配";
+        showToast("⚠️ 未查到中文，可在卡片上手动补齐后重新添加");
+      }
+    });
+  }
 }
 
 function delVocab(id){
@@ -1282,6 +1397,7 @@ function startFlashcard(){
 
 function renderFlashcard(){
   let area=document.getElementById("flashcardArea");
+  if(!area)return;
   if(!flashcardState.active||flashcardState.queue.length===0){
     area.innerHTML="";
     return;
@@ -1296,6 +1412,7 @@ function renderFlashcard(){
       <button class="fc-btn fc-btn-restart" onclick="flashcardState.active=false;renderVocab()">返回</button>
       <button class="fc-btn fc-btn-next" onclick="startFlashcard()">再来一轮</button>
     </div></div>`;
+    area.scrollIntoView({behavior:"smooth",block:"center"});
     return;
   }
   let v=flashcardState.queue[flashcardState.index];
@@ -1308,11 +1425,11 @@ function renderFlashcard(){
         <div class="flashcard-front">
           <img src="${v.image}" onerror="this.style.display='none';this.parentElement.innerHTML+='<div style=font-size:48px>📖</div>'">
           <button class="speak-btn" style="margin-top:6px;background:#fff;color:#FF6B6B;" onclick="event.stopPropagation();speakVocabById('${v.id}')">🔊 听发音</button>
-          <div class="fc-hint">点喇叭听英音，点卡片翻面</div>
+          <div class="fc-hint">点喇叭听英音，点卡片翻面看中文</div>
         </div>
         <div class="flashcard-back">
           <div class="fc-word">${v.word}</div>
-          ${v.translation?`<div class="fc-trans">${v.translation}</div>`:""}
+          <div class="fc-trans">${v.translation||''}</div>
           <button class="speak-btn" style="margin-top:6px;background:rgba(255,255,255,.9);color:#44A3A0;" onclick="event.stopPropagation();speakVocabById('${v.id}')">🔊 读</button>
         </div>
       </div>
@@ -1322,6 +1439,7 @@ function renderFlashcard(){
       <button class="fc-btn fc-btn-known" onclick="markFlashcard(true)">✅ 会了</button>
     </div>
   </div></div>`;
+  area.scrollIntoView({behavior:"smooth",block:"center"});
 }
 
 function flipFlashcard(){
