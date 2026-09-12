@@ -489,6 +489,55 @@ function biliSong(name){return biliSearch("Super Simple Songs "+name);}
 function biliAni(name){return biliSearch(name+" 英文启蒙动画");}
 function jdSearch(name){return "https://search.jd.com/Search?keyword="+encodeURIComponent(name+" 英文绘本");}
 
+// ========== B站视频（已确认的BVID，用于内嵌播放） ==========
+// 键对应 WEEKS 里儿歌/动画的名称（或系列关键词），值为B站BV号
+const BILI_BV={
+  "Row Row Row Your Boat":"BV1CWNdeYE77",
+  "Head Shoulders Knees and Toes":"BV1TNwheZEJk",
+  "The Wheels on the Bus":"BV1rpA8enEbc",
+  "Seven Steps":"BV1CR1NY6Exi",
+  "Five Little Monkeys":"BV1sxS7YXEF9",
+  "One Little Finger":"BV1FHyHY5Er4",
+  "Walking Walking":"BV15qHmezEDG",
+  "If You're Happy and You Know It":"BV16G2nYEEzr"
+};
+// 动画系列合集（按关键词匹配到合集视频）
+const BILI_SERIES=[
+  {kw:"yakka dee", bv:"BV1He4y1g743"},
+  {kw:"penelope", bv:"BV1MkGq6pEkz"},
+  {kw:"didi", bv:"BV11eKLe4Eji"}
+];
+function biliLookupBv(name){
+  const n=String(name||"").trim();
+  if(!n)return "";
+  if(BILI_BV[n])return BILI_BV[n];
+  const low=n.toLowerCase();
+  for(let s of BILI_SERIES){if(s.bv && low.indexOf(s.kw)>=0)return s.bv;}
+  return "";
+}
+function biliEmbedUrl(bv){return "https://player.bilibili.com/player.html?bvid="+encodeURIComponent(bv)+"&page=1&high_quality=1&danmaku=0";}
+function biliItemButtons(name,searchUrl,pid){
+  const bv=biliLookupBv(name);
+  if(bv){
+    return `<a class="bili-link" href="javascript:void(0)" onclick="toggleBiliPlayer('${pid}','${bv}')">▶ 播放</a>`
+         + `<a class="bili-link" href="${searchUrl}" target="_blank">🔍</a>`;
+  }
+  return `<a class="bili-link" href="${searchUrl}" target="_blank">🔍B站</a>`;
+}
+function biliPlayerBox(pid){
+  return `<div id="${pid}" class="bili-player" style="display:none;margin:6px 0;"></div>`;
+}
+function toggleBiliPlayer(pid,bv){
+  const box=document.getElementById(pid);
+  if(!box)return;
+  if(box.style.display!=="none"){
+    box.innerHTML="";box.style.display="none";return;
+  }
+  document.querySelectorAll(".bili-player").forEach(p=>{if(p.id!==pid){p.innerHTML="";p.style.display="none";}});
+  box.innerHTML=`<iframe src="${biliEmbedUrl(bv)}" scrolling="no" frameborder="0" allowfullscreen="true" style="width:100%;height:210px;border:none;border-radius:10px;background:#000;"></iframe>`;
+  box.style.display="block";
+}
+
 // ========== 单词配图（本地矢量卡片，无需网络、稳定可靠） ==========
 const PASTEL=["#FFD9D9","#D9EDFF","#FFF3C4","#D6F5D6","#EBD9FF","#FFE0F0","#D6F5F0","#FFEBD6"];
 const EMOJI_MAP={
@@ -985,13 +1034,16 @@ function renderMaterials(wid){
 
   // 儿歌
   html+=`<div class="material-card"><h3>🎵 儿歌（本周必听）</h3>`;
-  for(let s of w.songs){
+  for(let i=0;i<w.songs.length;i++){
+    let s=w.songs[i];
     let pKey=prefKey("song",s);let pref=getPref(pKey);
+    let pid="bili_"+wid+"_s_"+i;
     html+=`<div class="mat-item"><span class="mat-name">${s}</span>`;
-    html+=`<a class="bili-link" href="${biliSong(s)}" target="_blank">🔍B站</a>`;
+    html+=biliItemButtons(s,biliSong(s),pid);
     html+=`<div class="like-btns"><div class="like-btn ${pref==='like'?'liked':''}" onclick="setPref('${pKey}','like');renderMaterials(${wid})">👍</div>`;
     html+=`<div class="like-btn ${pref==='dislike'?'disliked':''}" onclick="setPref('${pKey}','dislike');renderMaterials(${wid})">👎</div></div>`;
     html+=`</div>`;
+    html+=biliPlayerBox(pid);
   }
   html+=`</div>`;
 
@@ -1009,13 +1061,16 @@ function renderMaterials(wid){
 
   // 动画
   html+=`<div class="material-card"><h3>📺 动画（本周观看）</h3>`;
-  for(let a of w.animation){
+  for(let i=0;i<w.animation.length;i++){
+    let a=w.animation[i];
     let pKey=prefKey("ani",a);let pref=getPref(pKey);
+    let pid="bili_"+wid+"_a_"+i;
     html+=`<div class="mat-item"><span class="mat-name">${a}</span>`;
-    html+=`<a class="bili-link" href="${biliAni(a)}" target="_blank">🔍B站</a>`;
+    html+=biliItemButtons(a,biliAni(a),pid);
     html+=`<div class="like-btns"><div class="like-btn ${pref==='like'?'liked':''}" onclick="setPref('${pKey}','like');renderMaterials(${wid})">👍</div>`;
     html+=`<div class="like-btn ${pref==='dislike'?'disliked':''}" onclick="setPref('${pKey}','dislike');renderMaterials(${wid})">👎</div></div>`;
     html+=`</div>`;
+    html+=biliPlayerBox(pid);
   }
   html+=`</div>`;
 
@@ -1225,6 +1280,9 @@ function answerQuiz(opt){
 // 待用图片（输入区导入）与目标卡片ID（点击卡片图片导入）
 let pendingVocabImage=null;
 let pendingCardImageId=null;
+// 输入草稿（保留在 renderVocab 重绘之间，避免图片导入后丢失已输入单词）
+let draftVocabWord="";
+let draftVocabTrans="";
 
 function chooseVocabImage(){
   pendingCardImageId=null;
@@ -1271,6 +1329,55 @@ function onVocabImageFile(input){
   reader.readAsDataURL(file);
   input.value="";
 }
+
+// 批量导入：从文件名提取单词（apple.jpg → apple）
+function filenameToWord(name){
+  return String(name||"").replace(/\.[^.]+$/,"").replace(/[_\-]+/g," ").replace(/\s+/g," ").trim();
+}
+function chooseVocabBatch(){
+  let f=document.getElementById("vocabImgFiles");if(f)f.click();
+}
+function onVocabImageFiles(input){
+  let files=Array.from(input.files||[]);
+  input.value="";
+  if(!files.length)return;
+  let imgFiles=files.filter(f=>f.type && f.type.startsWith("image/"));
+  let skipped=files.length-imgFiles.length;
+  if(!imgFiles.length){showToast("请选择图片文件");return;}
+  showToast("⏳ 正在批量导入 "+imgFiles.length+" 张图片…");
+  let done=0;
+  let newItems=[];
+  imgFiles.forEach(file=>{
+    let reader=new FileReader();
+    reader.onload=function(e){
+      resizeImage(e.target.result,320,function(dataUrl){
+        let word=filenameToWord(file.name);
+        if(!word)word="word"+(Date.now()%100000);
+        let trans=autoTranslate(word);
+        let id="v"+Date.now()+Math.floor(Math.random()*1000);
+        let item={id:id,word:word,translation:trans,image:dataUrl,date:new Date().toISOString(),known:false,reviewCount:0};
+        store.vocab.push(item);
+        newItems.push({id:id,word:word,trans:trans});
+        done++;
+        if(done===imgFiles.length){
+          saveStore();renderVocab();renderTopStats();
+          showToast("✅ 已批量导入 "+imgFiles.length+" 张图片"+(skipped?("，跳过 "+skipped+" 个非图片"):""));
+          // 未匹配到中文的，联网异步补翻
+          newItems.filter(p=>!p.trans).forEach(p=>{
+            translateWordAsync(p.word,function(ch){
+              let v=store.vocab.find(x=>x.id===p.id);if(!v)return;
+              if(ch){v.translation=ch;saveStore();let el=document.getElementById("vocab-tr-"+p.id);if(el)el.textContent=ch;}
+              else{let el=document.getElementById("vocab-tr-"+p.id);if(el)el.textContent="未匹配";}
+            });
+          });
+        }
+      });
+    };
+    reader.onerror=function(){done++;};
+    reader.readAsDataURL(file);
+  });
+}
+
 function speakVocabById(id){
   let v=store.vocab.find(x=>x.id===id);
   if(v)speakBritish(v.word);
@@ -1283,12 +1390,13 @@ function renderVocab(){
   html+=`<div class="vocab-input-box">`;
   html+=`<div style="font-size:13px;margin-bottom:8px;">输入外教课教的英文单词/短语，自动翻译中文；可导入图片，不导入则自动配彩色简笔画：</div>`;
   html+=`<div class="vocab-input-row">`;
-  html+=`<input type="text" id="vocabWord" placeholder="英文单词/短语 如 apple" onkeydown="if(event.key==='Enter')addVocab()">`;
-  html+=`<input type="text" id="vocabTrans" placeholder="中文（可留空自动翻译）" style="max-width:130px;" onkeydown="if(event.key==='Enter')addVocab()">`;
+  html+=`<input type="text" id="vocabWord" value="${escapeXml(draftVocabWord)}" placeholder="英文单词/短语 如 apple" oninput="draftVocabWord=this.value" onkeydown="if(event.key==='Enter')addVocab()">`;
+  html+=`<input type="text" id="vocabTrans" value="${escapeXml(draftVocabTrans)}" placeholder="中文（可留空自动翻译）" style="max-width:130px;" oninput="draftVocabTrans=this.value" onkeydown="if(event.key==='Enter')addVocab()">`;
   html+=`<button class="vocab-add-btn" onclick="addVocab()">➕ 添加</button>`;
   html+=`</div>`;
   html+=`<div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;">`;
   html+=`<button type="button" class="img-upload-btn ${pendingVocabImage?'has-img':''}" onclick="chooseVocabImage()">🖼️ 导入图片（可选）</button>`;
+  html+=`<button type="button" class="img-upload-btn" onclick="chooseVocabBatch()">📁 批量导入图片</button>`;
   if(pendingVocabImage){
     html+=`<img class="vocab-img-preview" src="${pendingVocabImage}">`;
     html+=`<button class="vocab-img-clear" onclick="clearVocabImage()">移除</button>`;
@@ -1321,6 +1429,7 @@ function renderVocab(){
 
   // 隐藏的图片选择 input
   html+=`<input type="file" id="vocabImgFile" accept="image/*" style="display:none;" onchange="onVocabImageFile(this)">`;
+  html+=`<input type="file" id="vocabImgFiles" accept="image/*" multiple style="display:none;" onchange="onVocabImageFiles(this)">`;
 
   // 闪卡复习区
   html+=`<div id="flashcardArea"></div>`;
@@ -1347,8 +1456,8 @@ function addVocab(){
   store.vocab.push(vocabItem);
   saveStore();
   pendingVocabImage=null;
-  document.getElementById("vocabWord").value="";
-  document.getElementById("vocabTrans").value="";
+  draftVocabWord="";
+  draftVocabTrans="";
   renderVocab();
   renderTopStats();
   if(trans){
