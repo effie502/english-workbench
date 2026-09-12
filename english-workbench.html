@@ -672,8 +672,8 @@ if('speechSynthesis' in window){
   speechSynthesis.onvoiceschanged=initBritishVoice;
 }
 // 有道TTS音频URL：type=1英音，type=2美音（国内可访问，不依赖浏览器语音引擎）
-function youdaoAudioUrl(text){
-  return "https://dict.youdao.com/dictvoice?audio="+encodeURIComponent(text)+"&type=1";
+function youdaoAudioUrl(text,type){
+  return "https://dict.youdao.com/dictvoice?audio="+encodeURIComponent(text)+"&type="+(type||1);
 }
 let speakAudio=null;
 function stopSpeakAudio(){
@@ -682,13 +682,19 @@ function stopSpeakAudio(){
 function speakBritish(text,onEnd){
   if(!text)return;
   stopSpeakAudio();
-  let audio=new Audio(youdaoAudioUrl(text));
-  speakAudio=audio;
-  audio.onended=function(){speakAudio=null;if(onEnd)onEnd();};
-  audio.onerror=function(){speakAudio=null;speakBritishFallback(text,onEnd);};
-  let p;
-  try{p=audio.play();}catch(e){speakAudio=null;speakBritishFallback(text,onEnd);return;}
-  if(p&&p.catch){p.catch(function(){speakAudio=null;speakBritishFallback(text,onEnd);});}
+  let srcs=[youdaoAudioUrl(text,1),youdaoAudioUrl(text,2)];
+  let i=0;
+  function tryNext(){
+    if(i>=srcs.length){speakBritishFallback(text,onEnd);return;}
+    let audio=new Audio(srcs[i++]);
+    speakAudio=audio;
+    audio.onended=function(){speakAudio=null;if(onEnd)onEnd();};
+    audio.onerror=function(){speakAudio=null;tryNext();};
+    let p;
+    try{p=audio.play();}catch(e){speakAudio=null;tryNext();return;}
+    if(p&&p.catch){p.catch(function(){speakAudio=null;tryNext();});}
+  }
+  tryNext();
 }
 function speakBritishFallback(text,onEnd){
   if('speechSynthesis' in window){
@@ -1284,6 +1290,53 @@ let pendingCardImageId=null;
 let draftVocabWord="";
 let draftVocabTrans="";
 
+// ========== 图片文字识别（OCR，Tesseract.js 懒加载） ==========
+let _tesseractScriptPromise=null;
+let _ocrWorkerPromise=null;
+function loadTesseract(){
+  if(window.Tesseract)return Promise.resolve(window.Tesseract);
+  if(_tesseractScriptPromise)return _tesseractScriptPromise;
+  _tesseractScriptPromise=new Promise(function(resolve,reject){
+    let s=document.createElement("script");
+    s.src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
+    s.onload=function(){resolve(window.Tesseract);};
+    s.onerror=function(){_tesseractScriptPromise=null;reject(new Error("ocr-load"));};
+    document.head.appendChild(s);
+  });
+  return _tesseractScriptPromise;
+}
+function getOcrWorker(){
+  if(_ocrWorkerPromise)return _ocrWorkerPromise;
+  _ocrWorkerPromise=loadTesseract().then(function(T){
+    return T.createWorker("eng");
+  }).catch(function(){_ocrWorkerPromise=null;return Promise.reject(new Error("ocr-load"));});
+  return _ocrWorkerPromise;
+}
+// 从 OCR 文本里提取最可能的英文单词：优先命中本地词典，否则取最长字母串
+function extractEnglishWord(text){
+  let tokens=String(text||"").match(/[A-Za-z][A-Za-z'-]*/g)||[];
+  if(!tokens.length)return "";
+  tokens=tokens.map(function(w){return w.replace(/['-]+$/,"");}).filter(function(w){return w.length>=2;});
+  for(let a=0;a<tokens.length;a++){if(VOCAB_DICT[tokens[a].toLowerCase()])return tokens[a];}
+  let best=tokens[0];
+  for(let b=1;b<tokens.length;b++){if(tokens[b].length>best.length)best=tokens[b];}
+  return best;
+}
+// 文件名是否像有效英文单词（纯字母、不含数字），用于决定是否走 OCR
+function isPlausibleWord(word){
+  let w=(word||"").trim();
+  if(!w||w.length<2||w.length>40)return false;
+  if(/[0-9]/.test(w))return false;
+  return /^[A-Za-z][A-Za-z' -]*$/.test(w);
+}
+function recognizeWordFromImage(dataUrl,cb){
+  getOcrWorker().then(function(worker){
+    worker.recognize(dataUrl).then(function(res){
+      cb(extractEnglishWord(res&&res.data&&res.data.text));
+    }).catch(function(){cb("");});
+  }).catch(function(){cb("");});
+}
+
 function chooseVocabImage(){
   pendingCardImageId=null;
   let f=document.getElementById("vocabImgFile");if(f)f.click();
@@ -1322,7 +1375,21 @@ function onVocabImageFile(input){
       }else{
         pendingVocabImage=dataUrl;
         renderVocab();
-        showToast("✅ 图片已导入，点击「添加」保存");
+        showToast("✅ 图片已导入，正在识别单词…");
+        recognizeWordFromImage(e.target.result,function(word){
+          if(!word){showToast("未识别到单词，请手动输入英文并点击添加");return;}
+          if(!draftVocabWord){
+            draftVocabWord=word;
+            draftVocabTrans=autoTranslate(word);
+            renderVocab();
+            if(draftVocabTrans){
+              showToast("✅ 识别到："+word+" → "+draftVocabTrans);
+            }else{
+              showToast("✅ 识别到："+word+"，正在联网查中文…");
+              translateWordAsync(word,function(ch){if(ch){draftVocabTrans=ch;renderVocab();}});
+            }
+          }
+        });
       }
     });
   };
@@ -1352,28 +1419,37 @@ function onVocabImageFiles(input){
     reader.onload=function(e){
       resizeImage(e.target.result,320,function(dataUrl){
         let word=filenameToWord(file.name);
-        if(!word)word="word"+(Date.now()%100000);
-        let trans=autoTranslate(word);
-        let id="v"+Date.now()+Math.floor(Math.random()*1000);
-        let item={id:id,word:word,translation:trans,image:dataUrl,date:new Date().toISOString(),known:false,reviewCount:0};
-        store.vocab.push(item);
-        newItems.push({id:id,word:word,trans:trans});
-        done++;
-        if(done===imgFiles.length){
-          saveStore();renderVocab();renderTopStats();
-          showToast("✅ 已批量导入 "+imgFiles.length+" 张图片"+(skipped?("，跳过 "+skipped+" 个非图片"):""));
-          // 未匹配到中文的，联网异步补翻
-          newItems.filter(p=>!p.trans).forEach(p=>{
-            translateWordAsync(p.word,function(ch){
-              let v=store.vocab.find(x=>x.id===p.id);if(!v)return;
-              if(ch){v.translation=ch;saveStore();let el=document.getElementById("vocab-tr-"+p.id);if(el)el.textContent=ch;}
-              else{let el=document.getElementById("vocab-tr-"+p.id);if(el)el.textContent="未匹配";}
+        function finalize(finalWord){
+          let trans=autoTranslate(finalWord);
+          let id="v"+Date.now()+Math.floor(Math.random()*1000);
+          let item={id:id,word:finalWord,translation:trans,image:dataUrl,date:new Date().toISOString(),known:false,reviewCount:0};
+          store.vocab.push(item);
+          newItems.push({id:id,word:finalWord,trans:trans});
+          done++;
+          if(done===imgFiles.length){
+            saveStore();renderVocab();renderTopStats();
+            showToast("✅ 已批量导入 "+imgFiles.length+" 张图片"+(skipped?("，跳过 "+skipped+" 个非图片"):""));
+            // 未匹配到中文的，联网异步补翻
+            newItems.filter(p=>!p.trans).forEach(p=>{
+              translateWordAsync(p.word,function(ch){
+                let v=store.vocab.find(x=>x.id===p.id);if(!v)return;
+                if(ch){v.translation=ch;saveStore();let el=document.getElementById("vocab-tr-"+p.id);if(el)el.textContent=ch;}
+                else{let el=document.getElementById("vocab-tr-"+p.id);if(el)el.textContent="未匹配";}
+              });
             });
+          }
+        }
+        // 文件名是有效英文单词则直接用；否则尝试 OCR 识别图片上的单词
+        if(isPlausibleWord(word)){
+          finalize(word);
+        }else{
+          recognizeWordFromImage(e.target.result,function(ocr){
+            finalize(ocr||word||("word"+(Date.now()%100000)));
           });
         }
       });
     };
-    reader.onerror=function(){done++;};
+    reader.onerror=function(){done++;if(done===imgFiles.length){saveStore();renderVocab();renderTopStats();}};
     reader.readAsDataURL(file);
   });
 }
